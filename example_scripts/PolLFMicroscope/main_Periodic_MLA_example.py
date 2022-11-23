@@ -25,30 +25,24 @@ from waveblocks.microscopes.lightfield_micro import Microscope
 from waveblocks.blocks.optic_config import OpticConfig
 from waveblocks.blocks.microlens_arrays import MLAType
 import waveblocks.blocks.point_spread_function as psf
+import waveblocks.utils.misc_utils
 
 # torch.set_num_threads(16)
 
+
 # Optical Parameters
 depth_step = 0.43
-depth_range = [-depth_step*5, depth_step*5]
+depth_range = [-depth_step*1, depth_step*1]
+vol_xy_size = 51
 depths = np.arange(depth_range[0], depth_range[1] + depth_step, depth_step)
 nDepths = len(depths)
-vol_xy_size = 501
-
-
 
 # Configuration parameters
 file_path = pathlib.Path(__file__).parent.absolute()
 data_path = file_path.parent.joinpath("data")
-plot = False
+
 # Fetch Device to use
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-# Enable plotting
-if plot:
-    fig = plt.figure(num=None, figsize=(15, 10), dpi=80, facecolor="w", edgecolor="k")
-    plt.ion()
-    plt.show()
 
 # Load volume to use as our object in front of the microscope
 vol_file = h5py.File(
@@ -67,6 +61,8 @@ GT_volume = torch.nn.functional.interpolate(
 GT_volume = GT_volume[:, 0, ...].permute(0, 3, 1, 2).contiguous()
 GT_volume /= GT_volume.max()
 
+
+################### Configure Microscope
 # Create opticalConfig object with the information from the microscope
 opticalConfig = OpticConfig()
 
@@ -88,13 +84,13 @@ opticalConfig.PSF_config.fobj = (
 
 # Camera
 opticalConfig.sensor_pitch = 6.5
-opticalConfig.use_relay = False
 
 # MLA
 opticalConfig.use_mla = True
 opticalConfig.MLAPitch = 100
 opticalConfig.Nnum = 2 * [opticalConfig.MLAPitch // opticalConfig.sensor_pitch]
 opticalConfig.Nnum = [int(n + (1 if (n % 2 == 0) else 0)) for n in opticalConfig.Nnum]
+opticalConfig.supersampling = 5
 opticalConfig.mla2sensor = 2500
 opticalConfig.fm = 2500
 opticalConfig.mla_type = MLAType.periodic
@@ -123,6 +119,7 @@ plt.savefig('output_PolScopeSettings_ni135.png')
 # LF_center = LF_psf[0,:,-1,-1,:,:].detach().numpy() ; 
 # imwrite('PSF_center.tif', LF_center)
 plt.show()
+
 
 
 # for n in range(nDepths):

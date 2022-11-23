@@ -141,17 +141,19 @@ class PeriodicMLA(BaseMLA):
             # half size of the ML
             ml_half_shape = torch.ceil(self.block_shape.float() / 2.0).int()
             # half size of mla image
-            mla_half_shape = torch.ceil(
-                torch.tensor(self.mla_image.shape[0:2]).float() / 2.0
+            half_supersampling = torch.ceil(
+                torch.tensor(self.optic_config.supersampling).float() / 2.0
             ).int()
 
+            shift_step = self.block_shape.float() / self.optic_config.supersampling
+            supersampling_center_offset = ml_half_shape[0]-(half_supersampling-1)*shift_step[0]
             # define output PSF
             psf_out = torch.zeros(
                 (
                     psf_shape[0],
                     psf_shape[1],
-                    ml_half_shape[0],
-                    ml_half_shape[1],
+                    half_supersampling,
+                    half_supersampling,
                     psf_shape[2],
                     psf_shape[3]
                 ),
@@ -160,27 +162,16 @@ class PeriodicMLA(BaseMLA):
 
             # iterate positions inside the central ML,
             # as the psf diffracts different when placed at different spots of the mla
-            for x1 in range(ml_half_shape[0]):
-                x1_shift = ml_half_shape[0] - x1
-                # bottom_corner_1 = max((mla_half_shape[0] - half_psf_shape[0] - x1_shift + 1).item(), 0)
-                # top_corner_1 = min((mla_half_shape[0] + half_psf_shape[0] - x1_shift).item(), self.mla_image.shape[0])
-                for x2 in range(ml_half_shape[1]):
+            for x1 in range(half_supersampling):
+                x1_shift = int(ml_half_shape[0] - x1*shift_step[0] - supersampling_center_offset)
+                for x2 in range(half_supersampling):
                     # crop translated mla image, to have the element x,y at the center
-                    x2_shift = ml_half_shape[1] - x2
-
-                    # bottom_corner_2 = max((mla_half_shape[1] - half_psf_shape[1] - x2_shift + 1).item(), 0)
-                    # top_corner_2 = min((mla_half_shape[1] + half_psf_shape[1] - x2_shift).item(), self.mla_image.shape[1])
+                    x2_shift = int(ml_half_shape[1] - x2*shift_step[1] - supersampling_center_offset)
 
                     # Compute the correct transmitance for this PSF position
-                    transmittance_current_xy = torch.roll(self.mla_image, [x1_shift-1, x2_shift-1], [0,1])
+                    transmittance_current_xy = torch.roll(self.mla_image, [x1_shift, x2_shift], [0,1])
                     # multiply by all depths
-                    # replicate transmittance by nDepths
-                    transmittance_current_xyz = (
-                        transmittance_current_xy.unsqueeze(0)
-                        .unsqueeze(0)
-                        .repeat(psf_shape[0], psf_shape[1], 1, 1)
-                    )
-                    psf_out[:, :, x1, x2, ...] = transmittance_current_xyz * psf
+                    psf_out[:, :, x1, x2, ...] = psf * transmittance_current_xy
 
             # output is ordered as [depths, x, y, Nnum[0], Nnum[1], complex]
             return psf_out

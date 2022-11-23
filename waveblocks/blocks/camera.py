@@ -70,6 +70,10 @@ class Camera(OpticBlock):
         ml_shape = mla.block_shape
         ml_half_shape = ml_shape // 2 + 1
 
+
+        ss_shape = torch.tensor(2*[self.optic_config.supersampling])
+        ss_half_shape = ss_shape // 2 + 1
+
         # update PSF in MLA
         # MLA.set_space_variant_psf(psfNormalized)
 
@@ -84,9 +88,9 @@ class Camera(OpticBlock):
                 1
                 + torch.floor(
                     (input_half_shape.float() - ml_half_shape.float())
-                    / ml_shape.float()
+                    / ss_shape.float()
                 ),
-                ml_shape.float(),
+                ss_shape.float(),
             )
             - (input_half_shape - ml_half_shape).float()
         )
@@ -102,31 +106,34 @@ class Camera(OpticBlock):
         padded_shape = torch.tensor(padded_input.shape, dtype=torch.int32)
         padded_center = padded_shape[2:4] // 2  # todo: check this
         # compute views to group together all elements with the same position relative to the MLAs centers
-        out_channel = padded_shape[1] * (ml_shape[0] ** 2)
-        out_h = padded_shape[2] // ml_shape[0]
-        out_w = padded_shape[2] // ml_shape[1]
+        out_channel = padded_shape[1] * (ss_shape[0] ** 2)
+        out_h = padded_shape[2] // ss_shape[0]
+        out_w = padded_shape[2] // ss_shape[1]
         fm_view = padded_input.contiguous().view(
-            padded_shape[0], padded_shape[1], out_h, ml_shape[0], out_w, ml_shape[1]
+            padded_shape[0], padded_shape[1], out_h, ss_shape[0], out_w, ss_shape[1]
         )
 
         # pad again to match output size of convolution with input size
         pad_size2 = (0, 0, 1, 1, 0, 0, 1, 1)
         fm_view = torch.nn.functional.pad(fm_view, pad_size2, "constant", 0)
 
+        shift_step = ml_shape.float() / self.optic_config.supersampling
+        supersampling_center_offset = ml_half_shape[0]-(ss_half_shape[0]-1)*shift_step[0]
+
         final_image = torch.zeros(input.shape, dtype=torch.float32).to(input.device)
-        for x1 in tqdm(range(ml_shape[0])):
+        for x1 in tqdm(range(ss_shape[0])):
             flip_x1 = True if x1 >= ml_half_shape[0].item() else False
             x1_quarter = (
-                ml_shape[0].item() - x1 - 1 if x1 >= ml_half_shape[0].item() else x1
+                ss_shape[0].item() - x1*shift_step[0] - supersampling_center_offset if x1 >= ss_half_shape[0].item() else x1**shift_step[0]
             )
-            for x2 in range(ml_shape[1]):
+            for x2 in range(ss_shape[1]):
                 curr_input = fm_view[:, :, :, x1, :, x2]
                 if curr_input.sum() == 0.0:
                     continue
 
                 flip_x2 = True if x2 >= ml_half_shape[1].item() else False
                 x2_quarter = (
-                    ml_shape[1].item() - x2 - 1 if x2 >= ml_half_shape[1].item() else x2
+                    ss_shape[1].item() - x2*shift_step[0] - supersampling_center_offset if x2 >= ss_half_shape[1].item() else x2*shift_step[0]
                 )
                 # fetch correct PSF pattern
                 curr_psf = psf[:, :, x1_quarter, x2_quarter, :, :]
