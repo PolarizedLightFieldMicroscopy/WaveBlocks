@@ -18,9 +18,9 @@ import numpy as np
 import torch
 import pathlib
 import logging
-import tables
 import os
 import math
+import h5py
 
 # Waveblocks imports
 import waveblocks
@@ -69,8 +69,8 @@ if device == torch.device("cpu"):
     logger.warning("USING CPU")
 
 # Load volume to use as our object in front of the microscope
-vol_file = tables.open_file(data_path.joinpath("fish_phantom_251_251_51.h5"), "r", driver="H5FD_CORE")
-gt_volume = torch.tensor(vol_file.root.fish_phantom).permute(2, 1, 0).unsqueeze(0).unsqueeze(0).to(device)
+vol_file = h5py.File(data_path.joinpath("fish_phantom_251_251_51.h5"), "r")
+gt_volume = torch.tensor(vol_file['fish_phantom']).permute(2, 1, 0).unsqueeze(0).unsqueeze(0).to(device)
 gt_volume = torch.nn.functional.interpolate(gt_volume, [vol_xy_size, vol_xy_size, n_depths])
 gt_volume = gt_volume[:, 0, ...].permute(0, 3, 1, 2).contiguous()
 gt_volume = torch.nn.functional.pad(gt_volume, [2, 2, 2, 2])
@@ -85,7 +85,7 @@ psf_size = 17 * 31  # 17 * 11
 
 # Define PSF
 psf = psf.PSF(optic_config=optic_config, members_to_learn=[])
-_, psf_in = psf.forward(optic_config.sensor_pitch / optic_config.PSF_config.M, psf_size, depths)
+_, psf_in = psf.forward(optic_config.camera_config.sensor_pitch / optic_config.PSF_config.M, psf_size, depths)
 
 # Enable Fourier convolutions
 optic_config.use_fft_conv = True
@@ -110,7 +110,7 @@ mla_shape = [psf_size, psf_size]
 optic_config.use_pm = True
 # Number of pixels in phase mask
 # compute pixel size at fourier plane of first lens
-Fs = 1.0 / optic_config.sensor_pitch
+Fs = 1.0 / optic_config.camera_config.sensor_pitch
 cycles_perum = Fs / psf_in.shape[-2]
 # incoherent resolution limit
 resolution_limit = optic_config.PSF_config.wvl / (optic_config.PSF_config.NA * optic_config.PSF_config.M)

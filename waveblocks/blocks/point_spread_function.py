@@ -335,19 +335,19 @@ class PSFScatter(PSF):
         self.waveProp = ob.WavePropagation(
             optic_config=optic_config,
             members_to_learn=[],
-            sampling_rate=optic_config.sensor_pitch,
+            sampling_rate=optic_config.camera_config.sensor_pitch,
             shortest_propagation_distance=-self.depth_step*optic_config.PSF_config.M**2,
             field_length=psf_size,
             allow_max_sampling=True
         )
     
     def forward(self, xy_step, xy_lateral_size, z_particle_range):
-        _,clean_psf = super().forward(self.optic_config.sensor_pitch/self.optic_config.PSF_config.M, self.psf_size, z_particle_range[0])
+        _,clean_psf = super().forward(self.optic_config.camera_config.sensor_pitch/self.optic_config.PSF_config.M, self.psf_size, z_particle_range[0])
         wave_prop_psf = clean_psf.clone().repeat(1,len(z_particle_range),1,1)
         for i,d in enumerate(range(1,len(z_particle_range))):
             curr_depth_step = torch.tensor(abs(z_particle_range[0]-z_particle_range[1]))
             max_ph = np.sqrt(curr_depth_step/self.ls/10)*np.pi 
-            curr_pm = ob.compute_random_phase_screen(self.sigma_x, self.seed_density, max_ph, self.optic_config.sensor_pitch, self.psf_size, self.optic_config.PSF_config.wvl, self.optic_config.k)
+            curr_pm = ob.compute_random_phase_screen(self.sigma_x, self.seed_density, max_ph, self.optic_config.camera_config.sensor_pitch, self.psf_size, self.optic_config.PSF_config.wvl, self.optic_config.k)
 
             self.waveProp.propagation_distance.data = -curr_depth_step*self.optic_config.PSF_config.M**2
             curr_psf = wave_prop_psf[:,d-1,...].unsqueeze(1).clone()

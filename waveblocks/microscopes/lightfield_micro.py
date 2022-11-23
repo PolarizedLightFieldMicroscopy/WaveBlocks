@@ -9,9 +9,9 @@ from waveblocks.blocks import WavePropagation
 from waveblocks.blocks.microlens_arrays import PeriodicMLA
 
 
-class Microscope(BaseMicroscope):
+class LFMicroscope(BaseMicroscope):
     def __init__(self, optic_config, members_to_learn, psf_in, precompute=True):
-        super(Microscope, self).__init__(
+        super(LFMicroscope, self).__init__(
             optic_config=optic_config,
             members_to_learn=members_to_learn,
             psf_in=psf_in,
@@ -23,21 +23,21 @@ class Microscope(BaseMicroscope):
             self.mla = PeriodicMLA(
                 optic_config=self.optic_config,
                 members_to_learn=[],
-                focal_length=optic_config.fm,
+                focal_length=optic_config.mla_config.focal_length,
                 pixel_size=self.sampling_rate,
                 image_shape=self.psf_in.shape[2:4],
-                block_shape=optic_config.Nnum,
+                block_shape=optic_config.mla_config.n_pixels_per_mla,
                 space_variant_psf=self.space_variant_psf,
-                block_separation=optic_config.Nnum,
+                block_separation=optic_config.mla_config.n_pixels_per_mla,
                 block_offset=0,
             )
 
             # Propagation
-            self.mla2sensor = WavePropagation(
+            self.camera_distance = WavePropagation(
                 optic_config=self.optic_config,
                 members_to_learn=[],
                 sampling_rate=self.sampling_rate,
-                shortest_propagation_distance=optic_config.mla2sensor,
+                shortest_propagation_distance=optic_config.mla_config.camera_distance,
                 field_length=self.field_length,
             )
 
@@ -47,7 +47,7 @@ class Microscope(BaseMicroscope):
                     with torch.no_grad():
                         psf_5d = self.mla(self.psf_in, self.sampling_rate)
                         # Propagate from MLA to sensor
-                        self.psf_at_sensor = torch.nn.Parameter(self.mla2sensor(psf_5d))
+                        self.psf_at_sensor = torch.nn.Parameter(self.camera_distance(psf_5d))
 
             else:
                 self.psf_at_sensor = self.psf_in
@@ -89,21 +89,21 @@ class MicroscopeTrainable(BaseMicroscope):
             self.mla = PeriodicMLA(
                 optic_config=self.optic_config,
                 members_to_learn=[],
-                focal_length=optic_config.fm,
+                focal_length=optic_config.mla_config.focal_length,
                 pixel_size=self.sampling_rate,
                 image_shape=self.psf_in.shape[2:4],
-                block_shape=[optic_config.Nnum, optic_config.Nnum],
+                block_shape=[optic_config.n_pixels_per_mla, optic_config.n_pixels_per_mla],
                 space_variant_psf=self.space_variant_psf,
                 block_separation=optic_config.block_separation,
                 block_offset=0,
             )
 
             # Propagation
-            self.mla2sensor = WavePropagation(
+            self.camera_distance = WavePropagation(
                 optic_config=self.optic_config,
                 members_to_learn=[],
                 sampling_rate=self.sampling_rate,
-                shortest_propagation_distance=optic_config.mla2sensor,
+                shortest_propagation_distance=optic_config.mla_config.camera_distance,
                 field_length=self.field_length,
             )
 
@@ -122,7 +122,7 @@ class MicroscopeTrainable(BaseMicroscope):
 
         psf_5d = self.mla(self.psf_in, self.sampling_rate)
         # propagate from MLA to sensor
-        psf_at_sensor = self.mla2sensor(psf_5d)
+        psf_at_sensor = self.camera_distance(psf_5d)
 
         if self.useMLA:
             # compute final PSF and convolve with object

@@ -52,7 +52,7 @@ device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 opticalConfig = ob.OpticConfig()
 
 # Update optical config from input PSF
-# psf_size = opticalConfig.Nnum[0] * 9
+# psf_size = opticalConfig.n_pixels_per_mla[0] * 9
 opticalConfig.PSF_config.NA = 0.2#psfFile.root.NA[0]
 opticalConfig.PSF_config.M = 16.0#float(psfFile.root.M[0])
 opticalConfig.PSF_config.Ftl = 165000
@@ -68,11 +68,11 @@ opticalConfig.sensor_pitch = 10 #psfFile.root.sensorRes[0]
 opticalConfig.useRelays = False
 # MLA
 opticalConfig.useMLA = True
-opticalConfig.MLAPitch = 112
-opticalConfig.Nnum = 2 * [opticalConfig.MLAPitch//opticalConfig.sensor_pitch]
-opticalConfig.Nnum = [int(n + (1 if (n%2 == 0) else 0)) for n in opticalConfig.Nnum]
-opticalConfig.mla2sensor = 2500
-opticalConfig.fm = 2500
+opticalConfig.mla_config.pitch = 112
+opticalConfig.mla_config.camera_distance = 2500
+opticalConfig.mla_config.fm = 2500
+
+opticalConfig.setup_parameters()
 
 sigma_x=0.6*opticalConfig.PSF_config.wvl # this determines g. to obtain the relation between g and sigma_x, use BPM_Estimating_g
 seed_density = opticalConfig.PSF_config.wvl/4 #phase seed density, 

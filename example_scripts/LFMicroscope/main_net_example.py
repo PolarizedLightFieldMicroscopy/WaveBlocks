@@ -105,12 +105,12 @@ opticalConfig.use_relay = False
 
 # MLA
 opticalConfig.use_mla = True
-opticalConfig.MLAPitch = 112
-opticalConfig.Nnum = 2 * [opticalConfig.MLAPitch // opticalConfig.sensor_pitch]
-opticalConfig.Nnum = [int(n + (1 if (n % 2 == 0) else 0)) for n in opticalConfig.Nnum]
-opticalConfig.mla2sensor = 2500
+opticalConfig.pitch = 112
+opticalConfig.n_pixels_per_mla = 2 * [opticalConfig.pitch // opticalConfig.sensor_pitch]
+opticalConfig.n_pixels_per_mla = [int(n + (1 if (n % 2 == 0) else 0)) for n in opticalConfig.n_pixels_per_mla]
+opticalConfig.camera_distance = 2500
 opticalConfig.fm = 2500
-opticalConfig.mla_type = MLAType.periodic
+opticalConfig.arrangement_type = MLAType.periodic
 
 # Define relay   to initialize
 opticalConfig.use_relay = False
@@ -128,7 +128,7 @@ _, psf_in = PSF.forward(
 WBMicro = Microscope(optic_config=opticalConfig, members_to_learn=[], psf_in=psf_in).to(
     device
 )
-# WBMicro.mla2sensor = WBMicro.mla2sensor.to("cuda:1")
+# WBMicro.camera_distance = WBMicro.camera_distance.to("cuda:1")
 WBMicro.eval()
 
 # Load GT LF image

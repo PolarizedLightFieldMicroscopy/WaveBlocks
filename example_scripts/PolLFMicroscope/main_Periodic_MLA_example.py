@@ -13,49 +13,35 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import h5py
-import torch.optim as optim
-from torch.utils.tensorboard import SummaryWriter
-import torchvision as tv
-from datetime import datetime
 import pathlib
 from tifffile import imwrite
 
 # Waveblocks imports
-from waveblocks.microscopes.lightfield_micro import Microscope
+from waveblocks.microscopes.lightfield_micro import LFMicroscope
 from waveblocks.blocks.optic_config import OpticConfig
 from waveblocks.blocks.microlens_arrays import MLAType
 import waveblocks.blocks.point_spread_function as psf
-
-# torch.set_num_threads(16)
-
-# Optical Parameters
-depth_step = 0.43
-depth_range = [-depth_step*5, depth_step*5]
-depths = np.arange(depth_range[0], depth_range[1] + depth_step, depth_step)
-nDepths = len(depths)
-vol_xy_size = 501
-
-
+from waveblocks.utils.misc_utils import volume_2_projections
 
 # Configuration parameters
 file_path = pathlib.Path(__file__).parent.absolute()
 data_path = file_path.parent.joinpath("data")
-plot = False
-# Fetch Device to use
+# Fetch Device to use: cpu or GPU?
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# Enable plotting
-if plot:
-    fig = plt.figure(num=None, figsize=(15, 10), dpi=80, facecolor="w", edgecolor="k")
-    plt.ion()
-    plt.show()
+################### Object space specification
+depth_step = 0.43
+depth_range = [-depth_step*1, depth_step*1]
+vol_xy_size = 501
+depths = np.arange(depth_range[0], depth_range[1] + depth_step, depth_step)
+nDepths = len(depths)
 
 # Load volume to use as our object in front of the microscope
 vol_file = h5py.File(
     data_path.joinpath("fish_phantom_251_251_51.h5"), "r"
 )
 GT_volume = (
-    torch.tensor(vol_file['fish_phantom'])
+    torch.tensor(np.array(vol_file['fish_phantom']))
     .permute(2, 1, 0)
     .unsqueeze(0)
     .unsqueeze(0)
@@ -64,79 +50,71 @@ GT_volume = (
 GT_volume = torch.nn.functional.interpolate(
     GT_volume, [vol_xy_size, vol_xy_size, nDepths]
 )
+# Set volume to correct shape [batch, z, x, y]
 GT_volume = GT_volume[:, 0, ...].permute(0, 3, 1, 2).contiguous()
+# Normalize volume
 GT_volume /= GT_volume.max()
 
-# Create opticalConfig object with the information from the microscope
-opticalConfig = OpticConfig()
+
+################### Configure Microscope
+# Create optical_config object with the information from the microscope
+optical_config = OpticConfig()
 
 # Update optical config from input PSF
-psf_size = 17 * 11
-opticalConfig.PSF_config.NA = 1.2 
-opticalConfig.PSF_config.M = 60
-opticalConfig.PSF_config.Ftl = 200000
-opticalConfig.PSF_config.wvl = 0.593
-opticalConfig.PSF_config.ni = 1.35
-opticalConfig.PSF_config.ni0 = 1.35
-opticalConfig.PSF_config.fobj = (
-    opticalConfig.PSF_config.Ftl / opticalConfig.PSF_config.M
-)
+psf_size = 255
+optical_config.PSF_config.NA = 1.2 
+optical_config.PSF_config.M = 60
+optical_config.PSF_config.Ftl = 200000
+optical_config.PSF_config.wvl = 0.593
+optical_config.PSF_config.ni = 1.35
+optical_config.PSF_config.ni0 = 1.35
+
+optical_config.PSF_config.depth_step = depth_step
+optical_config.PSF_config.depths = depths
 
 # first zero found in the center at:
-# depths = np.append(depths,-2*opticalConfig.PSF_config.wvl/(opticalConfig.PSF_config.NA**2))
-# depths = np.append(depths,2*opticalConfig.PSF_config.wvl/(opticalConfig.PSF_config.NA**2))
+# depths = np.append(depths,2*optical_config.PSF_config.wvl/(optical_config.PSF_config.NA**2))
 
 # Camera
-opticalConfig.sensor_pitch = 6.5
-opticalConfig.use_relay = False
+optical_config.camera_config.sensor_pitch = 6.5
 
-# MLA
-opticalConfig.use_mla = True
-opticalConfig.MLAPitch = 100
-opticalConfig.Nnum = 2 * [opticalConfig.MLAPitch // opticalConfig.sensor_pitch]
-opticalConfig.Nnum = [int(n + (1 if (n % 2 == 0) else 0)) for n in opticalConfig.Nnum]
-opticalConfig.mla2sensor = 2500
-opticalConfig.fm = 2500
-opticalConfig.mla_type = MLAType.periodic
+# Microlens array
+optical_config.use_mla = True
+optical_config.mla_config.pitch = 100
+optical_config.mla_config.camera_distance = 2500
+optical_config.mla_config.focal_length = 2500
 
-# Define PSF
-PSF = psf.PSF(opticalConfig)
+# Update the optical configuration with the new parameters
+optical_config.setup_parameters()
+
+# Create and compute PSF
+PSF = psf.PSF(optical_config)
 _, psf_in = PSF.forward(
-    opticalConfig.sensor_pitch / opticalConfig.PSF_config.M, psf_size, depths
+    optical_config.PSF_config.voxel_size[0], psf_size, optical_config.PSF_config. depths
 )
 
-# Create a Microscope
-WBMicro = Microscope(optic_config=opticalConfig, members_to_learn=[], psf_in=psf_in).to(
-    device
-)
-# WBMicro.mla2sensor = WBMicro.mla2sensor.to("cuda:1")
-WBMicro.eval()
+# Create a ligth-field WaveBlocks microscope Microscope
+# Where: optical_config  = all microscope related information
+# members_to_learn      = list of strings indicating wich parameters of the microscope to optimize, None in this case
+# psf_in                = PSF complex wavefront at front focal plane of the tube lens
+lf_microscope = LFMicroscope(optic_config=optical_config, members_to_learn=[], psf_in=psf_in).to(device)
+# Here we tell Pytorch to set this module to evaluation mode, avoiding gradient computation.
+lf_microscope.eval()
 
-with torch.no_grad():
-    # Compute GT LF image
-    GT_LF_img = WBMicro(
-        GT_volume.detach()
-    )
-    
-plt.imshow(GT_LF_img[0,0,...].detach().cpu().numpy())
+
+################### Compute a LF image through a forward projection
+# We forward project the 3D volume GT_volume and generate a 2D LF image
+# This is similar than calling lf_microscope.forward() function, this is an inbuilt Pytorch function
+lf_image = lf_microscope(GT_volume)
+
+volume_MIP = volume_2_projections(GT_volume)[0,0,...].cpu().numpy() # We remove the first two dimensions to convert to numpy compatible image
+plt.subplot(1,2,1)
+plt.imshow(volume_MIP)
+plt.title('Volume MIP')
+plt.subplot(1,2,2)
+plt.imshow(lf_image[0,0,...].detach().cpu().numpy())
+plt.title('Light-field image')
 plt.savefig('output_PolScopeSettings_ni135.png')
 # LF_center = LF_psf[0,:,-1,-1,:,:].detach().numpy() ; 
 # imwrite('PSF_center.tif', LF_center)
 plt.show()
-
-
-# for n in range(nDepths):
-#     plt.subplot(1,3,1)
-#     psf = (torch.abs(WBMicro.psf_at_sensor[0,n,0,-1,...])**2)
-#     plt.imshow(psf.detach().cpu().numpy())
-#     plt.title(str(psf.sum().item()))
-#     plt.subplot(1,3,2)
-#     psf = torch.abs(psf-(torch.abs(WBMicro.psf_at_sensor[0,n,-1,-1,...])**2))
-#     plt.imshow(psf.detach().cpu().numpy())
-#     plt.title(str(psf.sum().item()))
-#     plt.subplot(1,3,3)
-#     psf = (torch.abs(WBMicro.psf_at_sensor[0,n,-1,0,...])**2)
-#     plt.imshow(psf.detach().cpu().numpy())
-#     plt.title(str(psf.sum().item()))
-#     # plt.title(str(n))
-#     plt.show()

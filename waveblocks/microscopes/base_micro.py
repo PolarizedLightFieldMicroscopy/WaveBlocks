@@ -22,7 +22,7 @@ class BaseMicroscope(OpticBlock, ABC):
         # Initializes microscope specific values
         self.psf_in = nn.Parameter(psf_in, requires_grad=True)
         self.space_variant_psf = space_variant_psf
-        self.sampling_rate = optic_config.sensor_pitch
+        self.sampling_rate = optic_config.camera_config.sensor_pitch
         self.field_length = psf_in.shape[2]
         self.use_relay = (
             optic_config.use_relay if hasattr(optic_config, "use_relay") else False
@@ -30,7 +30,8 @@ class BaseMicroscope(OpticBlock, ABC):
         self.use_mla = (
             optic_config.use_mla if hasattr(optic_config, "use_mla") else False
         )
-        self.mla_type = optic_config.mla_type
+        if self.use_mla:
+            self.arrangement_type = optic_config.mla_config.arrangement_type
         self.use_pm = optic_config.use_pm if hasattr(optic_config, "use_pm") else False
 
         self.dummy_device_param = nn.Parameter(torch.empty(0))

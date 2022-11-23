@@ -71,7 +71,7 @@ class Microscope(BaseMicroscope):
         # Setup MLA
         if self.use_mla:
             # MLA
-            if self.mla_type == MLAType.coordinate:
+            if self.arrangement_type == MLAType.coordinate:
 
                 if self.mla_coordinates is None or self.mla_shape is None:
                     raise Exception("MLA coordinates or mla shape missing!")
@@ -79,25 +79,25 @@ class Microscope(BaseMicroscope):
                 self.mla = CoordinateMLA(
                     optic_config=self.optic_config,
                     members_to_learn=members_to_learn,
-                    focal_length=optic_config.fm,
+                    focal_length=optic_config.mla_config.focal_length,
                     pixel_size=self.sampling_rate,
                     image_shape=self.psf_in.shape[2:4],
-                    block_shape=optic_config.Nnum,
+                    block_shape=optic_config.n_pixels_per_mla,
                     space_variant_psf=self.space_variant_psf,
                     mla_coordinates=self.mla_coordinates,
                     mla_shape=self.mla_shape,
                 )
 
-            elif self.mla_type == MLAType.periodic:
+            elif self.arrangement_type == MLAType.periodic:
                 self.mla = PeriodicMLA(
                     optic_config=self.optic_config,
                     members_to_learn=members_to_learn,
-                    focal_length=optic_config.fm,
+                    focal_length=optic_config.mla_config.focal_length,
                     pixel_size=self.sampling_rate,
                     image_shape=self.psf_in.shape[2:4],
-                    block_shape=optic_config.Nnum,
+                    block_shape=optic_config.n_pixels_per_mla,
                     space_variant_psf=self.space_variant_psf,
-                    block_separation=optic_config.Nnum,
+                    block_separation=optic_config.n_pixels_per_mla,
                     block_offset=0,
                 )
 
@@ -105,11 +105,11 @@ class Microscope(BaseMicroscope):
                 raise Exception("Microscope is missing mla type information")
 
             # Propagation
-            self.mla2sensor = WavePropagation(
+            self.camera_distance = WavePropagation(
                 optic_config=self.optic_config,
                 members_to_learn=members_to_learn,
                 sampling_rate=self.sampling_rate,
-                shortest_propagation_distance=optic_config.mla2sensor,
+                shortest_propagation_distance=optic_config.mla_config.camera_distance,
                 field_length=self.field_length,
             )
         else:
@@ -161,17 +161,17 @@ class Microscope(BaseMicroscope):
             # Check whether a mla is used for this microscope
             if self.use_mla:
                 # Create PSF of MLA
-                if self.mla_type == MLAType.coordinate:
+                if self.arrangement_type == MLAType.coordinate:
                     psf_mla = self.mla(psf, self.sampling_rate)
 
-                elif self.mla_type == MLAType.periodic:
+                elif self.arrangement_type == MLAType.periodic:
                     psf_mla = self.mla(psf, self.sampling_rate)
 
                 else:
                     raise Exception("Microscope is missing mla type information")
 
                 # Propagate MLA to sensor
-                psf = self.mla2sensor(psf_mla)
+                psf = self.camera_distance(psf_mla)
 
             # Compute final PSF and convolve with object
 
@@ -215,24 +215,24 @@ def preset1():
     optic_config.PSF_config.ni0 = 1.344
 
     # Camera
-    optic_config.sensor_pitch = 6.45
+    optic_config.camera_config.sensor_pitch = 6.45
     optic_config.use_relay = False
 
 
     # MLA
     optic_config.use_mla = True
-    optic_config.mla_type = MLAType.coordinate
+    optic_config.mla_config.arrangement_type = MLAType.coordinate
     # Distance between micro lenses centers
-    optic_config.MLAPitch = 1000
-    optic_config.MLAPitch_pixels = optic_config.MLAPitch // optic_config.sensor_pitch
+    optic_config.mla_config.pitch = 1000
+    optic_config.mla_config.pitch_pixels = optic_config.mla_config.pitch // optic_config.camera_config.sensor_pitch
     # Number of pixels behind a single lens
-    optic_config.Nnum = 2 * [optic_config.MLAPitch // optic_config.sensor_pitch]
-    optic_config.Nnum = [int(n + (1 if (n % 2 == 0) else 0))
-                        for n in optic_config.Nnum]
+    optic_config.n_pixels_per_mla = 2 * [optic_config.mla_config.pitch // optic_config.camera_config.sensor_pitch]
+    optic_config.n_pixels_per_mla = [int(n + (1 if (n % 2 == 0) else 0))
+                        for n in optic_config.n_pixels_per_mla]
     # Distance between the mla and the sensor
-    optic_config.mla2sensor = 36100
+    optic_config.mla_config.camera_distance = 36100
     # MLA focal length
-    optic_config.fm = 36100
+    optic_config.mla_config.focal_length = 36100
 
     # Define phase_mask to initialize
     optic_config.use_relay = True
@@ -262,24 +262,24 @@ def preset_old():
     optic_config.PSF_config.ni = 1
 
     # Camera
-    optic_config.sensor_pitch = 3.9
+    optic_config.camera_config.sensor_pitch = 3.9
     optic_config.use_relay = False
 
     # MLA
     optic_config.use_mla = True
-    optic_config.mla_type = MLAType.coordinate
+    optic_config.mla_config.arrangement_type = MLAType.coordinate
     # Distance between micro lenses centers
-    optic_config.MLAPitch = 250
+    optic_config.mla_config.pitch = 250
 
     # Number of pixels behind a single lens
-    optic_config.Nnum = 2 * [optic_config.MLAPitch // optic_config.sensor_pitch]
-    optic_config.Nnum = [int(n + (1 if (n % 2 == 0) else 0)) for n in optic_config.Nnum]
+    optic_config.n_pixels_per_mla = 2 * [optic_config.mla_config.pitch // optic_config.camera_config.sensor_pitch]
+    optic_config.n_pixels_per_mla = [int(n + (1 if (n % 2 == 0) else 0)) for n in optic_config.n_pixels_per_mla]
 
     # Distance between the mla and the sensor
-    optic_config.mla2sensor = 2500
+    optic_config.mla_config.camera_distance = 2500
 
     # MLA focal length
-    optic_config.fm = 2500
+    optic_config.mla_config.focal_length = 2500
 
     # Define phase_mask to initialize
     optic_config.use_relay = True

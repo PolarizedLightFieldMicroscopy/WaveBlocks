@@ -110,7 +110,7 @@ psf_size = 17 * 31  # 17 * 11
 # Define PSF
 PSF = psf.PSF(optic_config=optic_config, members_to_learn=[])
 _, psf_in = PSF.forward(
-    optic_config.sensor_pitch / optic_config.PSF_config.M, psf_size, depths
+    optic_config.camera_config.sensor_pitch / optic_config.PSF_config.M, psf_size, depths
 )
 
 # Enable Fourier convolutions
@@ -135,7 +135,7 @@ mla_shape = [psf_size, psf_size]  # [499, 499]
 optic_config.use_pm = True
 # Number of pixels in phase mask
 # compute pixel size at fourier plane of first lens
-Fs = 1.0 / optic_config.sensor_pitch
+Fs = 1.0 / optic_config.camera_config.sensor_pitch
 cycles_perum = Fs / psf_in.shape[-2]
 # incoherent resolution limit
 resolution_limit = optic_config.PSF_config.wvl / (

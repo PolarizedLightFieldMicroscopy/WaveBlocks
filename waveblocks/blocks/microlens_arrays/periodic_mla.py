@@ -22,12 +22,12 @@ class PeriodicMLA(BaseMLA):
     self.mla = PeriodicMLA(
     optic_config=self.optic_config, # Forwards the optic config
     members_to_learn=members_to_learn, # Forwards the members to learn during the optimization process
-    focal_length=optic_config.fm, # Extracts the focal length from the optic config
+    focal_length=optic_config.mla_config.focal_length, # Extracts the focal length from the optic config
     pixel_size=self.sampling_rate, # Specifies the sampling rate
     image_shape=self.psf_in.shape[2:4], # Defines the output image shape
-    block_shape=optic_config.Nnum, # Defines the amount of lenselet blocks
+    block_shape=optic_config.n_pixels_per_mla, # Defines the amount of lenselet blocks
     space_variant_psf=self.space_variant_psf, # Specifies if it is a space variant psf
-    block_separation=optic_config.Nnum, # Defines the space separation between blocks
+    block_separation=optic_config.n_pixels_per_mla, # Defines the space separation between blocks
     block_offset=0,
     )   
     
@@ -182,7 +182,7 @@ class PeriodicMLA(BaseMLA):
                     )
                     psf_out[:, :, x1, x2, ...] = transmittance_current_xyz * psf
 
-            # output is ordered as [depths, x, y, Nnum[0], Nnum[1], complex]
+            # output is ordered as [depths, x, y, n_pixels_per_mla[0], n_pixels_per_mla[1], complex]
             return psf_out
         else:
             # Adjust shape of psf and add padding if necessary

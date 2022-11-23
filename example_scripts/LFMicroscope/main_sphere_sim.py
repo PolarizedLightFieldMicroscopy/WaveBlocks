@@ -72,14 +72,14 @@ opticalConfig.sensor_pitch = 3.45 / subsampling
 opticalConfig.use_relay = False
 # MLA
 opticalConfig.use_mla = True
-opticalConfig.MLAPitch = 112
-opticalConfig.Nnum = 2 * [opticalConfig.MLAPitch // opticalConfig.sensor_pitch]
-opticalConfig.Nnum = [int(n + (1 if (n % 2 == 0) else 0)) for n in opticalConfig.Nnum]
-opticalConfig.mla2sensor = 2500
+opticalConfig.pitch = 112
+opticalConfig.n_pixels_per_mla = 2 * [opticalConfig.pitch // opticalConfig.sensor_pitch]
+opticalConfig.n_pixels_per_mla = [int(n + (1 if (n % 2 == 0) else 0)) for n in opticalConfig.n_pixels_per_mla]
+opticalConfig.camera_distance = 2500
 opticalConfig.fm = 2500
 
 # Update optical config from input PSF
-psf_size = opticalConfig.Nnum[0] * mlas_per_psf
+psf_size = opticalConfig.n_pixels_per_mla[0] * mlas_per_psf
 opticalConfig.PSF_config.NA = 0.9
 opticalConfig.PSF_config.M = 40
 opticalConfig.PSF_config.Ftl = 165000
@@ -94,8 +94,8 @@ mlas_behind_vol = 3
 mlas_neight = 9
 total_mlas = mlas_behind_vol + mlas_neight - 1
 
-vol_shape = mlas_behind_vol * opticalConfig.Nnum[0]
-full_vol_shape = total_mlas * opticalConfig.Nnum[0]
+vol_shape = mlas_behind_vol * opticalConfig.n_pixels_per_mla[0]
+full_vol_shape = total_mlas * opticalConfig.n_pixels_per_mla[0]
 pad_vol = full_vol_shape - vol_shape
 pad_vol_val = [
     pad_vol // 2,
@@ -178,7 +178,7 @@ mask = mask.float()
 mask /= mask.sum()
 
 # Create output file
-LF_shape = [opticalConfig.Nnum[0], opticalConfig.Nnum[1], total_mlas, total_mlas]
+LF_shape = [opticalConfig.n_pixels_per_mla[0], opticalConfig.n_pixels_per_mla[1], total_mlas, total_mlas]
 h5file = h5py.File(
     save_folder
     + "/Simul_spheres_"

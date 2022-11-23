@@ -86,21 +86,21 @@ class Microscope(BaseMicroscope):
             self.mla = PeriodicMLA(
                 optic_config=self.optic_config,
                 members_to_learn=[],
-                focal_length=optic_config.fm,
+                focal_length=optic_config.mla_config.focal_length,
                 pixel_size=self.sampling_rate,
                 image_shape=self.psf_in.shape[2:4],
-                block_shape=optic_config.Nnum,
+                block_shape=optic_config.n_pixels_per_mla,
                 space_variant_psf=self.space_variant_psf,
-                block_separation=optic_config.Nnum,
+                block_separation=optic_config.n_pixels_per_mla,
                 block_offset=0,
             )
 
             # propagation
-            self.mla2sensor = WavePropagation(
+            self.camera_distance = WavePropagation(
                 optic_config=self.optic_config,
                 members_to_learn=[],
                 sampling_rate=self.sampling_rate,
-                shortest_propagation_distance=optic_config.mla2sensor,
+                shortest_propagation_distance=optic_config.mla_config.camera_distance,
                 field_length=self.field_length,
             )
 
@@ -129,7 +129,7 @@ class Microscope(BaseMicroscope):
             # MLA
             psf_5d = self.mla(psf, self.sampling_rate)
             # propagate from MLA to sensor
-            psf_at_sensor = self.mla2sensor(psf_5d)
+            psf_at_sensor = self.camera_distance(psf_5d)
             # compute final PSF and convolve with object
             convolved_obj, psf, _ = self.camera(real_object, psf_at_sensor, self.mla, full_psf_graph=True)
         else:

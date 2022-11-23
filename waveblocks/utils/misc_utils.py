@@ -288,30 +288,46 @@ def volume_2_tensorboard(vol, batch_index=0, z_scaling=2):
     return xzProj, yzProj, xyProj
 
 # Convert volume to single 2D MIP image, input [batch,1,xDim,yDim,zDim]
-def volume_2_projections(vol, proj_type=torch.max):
-    # vol = vol.detach()
-    vol_size = vol.shape
-    if proj_type is torch.max or proj_type is torch.min:
-        x_projection,_ = proj_type(vol.float().cpu(), dim=2)
-        y_projection,_ = proj_type(vol.float().cpu(), dim=3)
-        z_projection,_ = proj_type(vol.float().cpu(), dim=4)
-    elif proj_type is torch.sum:
-        x_projection = proj_type(vol.float().cpu(), dim=2)
-        y_projection = proj_type(vol.float().cpu(), dim=3)
-        z_projection = proj_type(vol.float().cpu(), dim=4)
+def volume_2_projections(vol_in, proj_type=torch.amax, scaling_factors=[1,1,2], depths_in_ch=True, ths=[0.0,1.0], normalize=False, border_thickness=2, add_scale_bars=False, scale_bar_vox_sizes=[40,20]):
+    vol = vol_in.detach().clone().abs()
+    # Normalize sets limits from 0 to 1
+    if normalize:
+        vol -= vol.min()
+        vol /= vol.max()
+    if depths_in_ch:
+        vol = vol.permute(0,2,3,1).unsqueeze(1)
+    if ths[0]!=0.0 or ths[1]!=1.0:
+        vol_min,vol_max = vol.min(),vol.max()
+        vol[(vol-vol_min)<(vol_max-vol_min)*ths[0]] = 0
+        vol[(vol-vol_min)>(vol_max-vol_min)*ths[1]] = vol_min + (vol_max-vol_min)*ths[1]
 
-    out_img = torch.zeros(vol_size[0], vol_size[1], vol_size[2] + vol_size[4], vol_size[3] + vol_size[4])
+    vol_size = list(vol.shape)
+    vol_size[2:] = [vol.shape[i+2] * scaling_factors[i] for i in range(len(scaling_factors))]
 
-    out_img[:,:,:vol_size[2], :vol_size[3]] = z_projection
-    out_img[:,:,vol_size[2]:, :vol_size[3]] = x_projection.permute(0,1,3,2)
-    out_img[:,:,:vol_size[2], vol_size[3]:] = y_projection
+    x_projection = proj_type(vol.float().cpu(), dim=2)
+    y_projection = proj_type(vol.float().cpu(), dim=3)
+    z_projection = proj_type(vol.float().cpu(), dim=4)
 
-    # Draw white lines
-    out_img[:,:,vol_size[2],...] = z_projection.max()/2
-    out_img[:,:,:,vol_size[3],...] = z_projection.max()/2
+    out_img = z_projection.min() * torch.ones(
+        vol_size[0], vol_size[1], vol_size[2] + vol_size[4] + border_thickness, vol_size[3] + vol_size[4] + border_thickness
+    )
+
+    out_img[:, :, : vol_size[2], : vol_size[3]] = z_projection
+    out_img[:, :, vol_size[2] + border_thickness :, : vol_size[3]] = F.interpolate(x_projection.permute(0, 1, 3, 2), size=[vol_size[-1],vol_size[-3]], mode='nearest')
+    out_img[:, :, : vol_size[2], vol_size[3] + border_thickness :] = F.interpolate(y_projection, size=[vol_size[2],vol_size[4]], mode='nearest')
+
+
+    if add_scale_bars:
+        line_color = 1.0 #out_img.max()
+        # Draw white lines
+        out_img[:, :, vol_size[2]: vol_size[2]+ border_thickness, ...] = line_color
+        out_img[:, :, :, vol_size[3]:vol_size[3]+border_thickness, ...] = line_color
+        # start = 0.02
+        # out_img[:, :, int(start* vol_size[2]):int(start* vol_size[2])+4, int(0.9* vol_size[3]):int(0.9* vol_size[3])+scale_bar_vox_sizes[0]] = line_color
+        # out_img[:, :, int(start* vol_size[2]):int(start* vol_size[2])+4, vol_size[2] + border_thickness + 10 : vol_size[2] + border_thickness + 10 + scale_bar_vox_sizes[1]*scaling_factors[2]] = line_color
+        # out_img[:, :, vol_size[2] + border_thickness + 10 : vol_size[2] + border_thickness + 10 + scale_bar_vox_sizes[1]*scaling_factors[2], int(start* vol_size[2]):int(start* vol_size[2])+4] = line_color
 
     return out_img
-
 
 # Aid functions for shiftfft2
 def roll_n(X, axis, n):

@@ -112,19 +112,19 @@ opticalConfig.sensor_pitch = 10
 
 # MLA
 opticalConfig.use_mla = True
-opticalConfig.mla_type = ob.MLAType.coordinate
+opticalConfig.arrangement_type = ob.MLAType.coordinate
 # Distance between micro lenses centers
-opticalConfig.MLAPitch = 90
+opticalConfig.pitch = 90
 
 # Number of pixels behind a single lens
-opticalConfig.Nnum = 2 * [opticalConfig.MLAPitch // opticalConfig.sensor_pitch]
-opticalConfig.Nnum = [int(n + (1 if (n % 2 == 0) else 0)) for n in opticalConfig.Nnum]
+opticalConfig.n_pixels_per_mla = 2 * [opticalConfig.pitch // opticalConfig.sensor_pitch]
+opticalConfig.n_pixels_per_mla = [int(n + (1 if (n % 2 == 0) else 0)) for n in opticalConfig.n_pixels_per_mla]
 
 # Distance between the mla and the sensor
-opticalConfig.mla2sensor = 35400/10
+opticalConfig.camera_distance = 35400/10
 
 # MLA focal length
-opticalConfig.fm = opticalConfig.mla2sensor
+opticalConfig.fm = opticalConfig.camera_distance
 
 # Define phase_mask to initialize
 opticalConfig.use_relay = True

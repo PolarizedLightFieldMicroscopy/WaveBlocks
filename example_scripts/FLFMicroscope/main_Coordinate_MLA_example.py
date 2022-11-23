@@ -91,29 +91,29 @@ optic_config.PSF_config.wvl = 0.63
 optic_config.PSF_config.ni = 1
 
 # Camera
-optic_config.sensor_pitch = 3.9
+optic_config.camera_config.sensor_pitch = 3.9
 optic_config.useRelays = False
 
 # MLA
 optic_config.use_mla = True
-optic_config.mla_type = MLAType.coordinate
+optic_config.mla_config.arrangement_type = MLAType.coordinate
 # Distance between micro lenses centers
-optic_config.MLAPitch = 250
+optic_config.mla_config.pitch = 250
 
 # Number of pixels behind a single lens
-optic_config.Nnum = 2 * [optic_config.MLAPitch // optic_config.sensor_pitch]
-optic_config.Nnum = [int(n + (1 if (n % 2 == 0) else 0)) for n in optic_config.Nnum]
+optic_config.n_pixels_per_mla = 2 * [optic_config.mla_config.pitch // optic_config.camera_config.sensor_pitch]
+optic_config.n_pixels_per_mla = [int(n + (1 if (n % 2 == 0) else 0)) for n in optic_config.n_pixels_per_mla]
 
 # Distance between the mla and the sensor
-optic_config.mla2sensor = 2500
+optic_config.mla_config.camera_distance = 2500
 
 # MLA focal length
-optic_config.fm = 2500
+optic_config.mla_config.focal_length = 2500
 
 # Define PSF
 PSF = psf.PSF(optic_config=optic_config, members_to_learn=[])
 _, psf_in = PSF.forward(
-    optic_config.sensor_pitch / optic_config.PSF_config.M, psf_size, depths
+    optic_config.camera_config.sensor_pitch / optic_config.PSF_config.M, psf_size, depths
 )
 
 # Define phase_mask to initialize
