@@ -19,6 +19,9 @@ class MLAConfig:
 class CameraConfig:
     pass
 
+class VolumeConfig:
+    pass
+
 class OpticConfig(nn.Module):
     """Class containing the global parameters of an optical system:
     Keyword args:
@@ -91,6 +94,7 @@ class OpticConfig(nn.Module):
         self.set_k()
         self.mla_config = self.get_default_MLA_config()
         self.camera_config = self.get_default_camera_config()
+        self.volume_config = VolumeConfig()
 
 
     def get_wavelenght(self):
