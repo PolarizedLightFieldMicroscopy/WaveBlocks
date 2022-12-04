@@ -288,7 +288,7 @@ def volume_2_tensorboard(vol, batch_index=0, z_scaling=2):
     return xzProj, yzProj, xyProj
 
 # Convert volume to single 2D MIP image, input [batch,1,xDim,yDim,zDim]
-def volume_2_projections(vol_in, proj_type=torch.amax, scaling_factors=[1,1,2], depths_in_ch=True, ths=[0.0,1.0], normalize=False, border_thickness=2, add_scale_bars=False, scale_bar_vox_sizes=[40,20]):
+def volume_2_projections(vol_in, proj_type=torch.amax, scaling_factors=[1,1,2], depths_in_ch=True, ths=[0.0,1.0], normalize=False, border_thickness=2, add_scale_bars=True, scale_bar_vox_sizes=[40,20]):
     vol = vol_in.detach().clone().abs()
     # Normalize sets limits from 0 to 1
     if normalize:
@@ -318,7 +318,7 @@ def volume_2_projections(vol_in, proj_type=torch.amax, scaling_factors=[1,1,2], 
 
 
     if add_scale_bars:
-        line_color = 1.0 #out_img.max()
+        line_color = out_img.max()
         # Draw white lines
         out_img[:, :, vol_size[2]: vol_size[2]+ border_thickness, ...] = line_color
         out_img[:, :, :, vol_size[3]:vol_size[3]+border_thickness, ...] = line_color

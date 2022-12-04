@@ -65,6 +65,8 @@ class OpticConfig(nn.Module):
         mla_config.camera_distance = 2500
         mla_config.focal_length = 2500
         mla_config.arrangement_type = MLAType.periodic
+        mla_config.n_voxels_per_ml = 1 # How many voxels per micro-lens
+        mla_config.n_micro_lenses = 1
 
         return mla_config
 
