@@ -1,6 +1,6 @@
 # Third party libraries imports
 import torch.nn as nn
-
+import torch
 
 class OpticBlock(nn.Module):  # pure virtual class
     """Base class containing all the basic functionality of an optic block"""
@@ -11,6 +11,7 @@ class OpticBlock(nn.Module):  # pure virtual class
         super(OpticBlock, self).__init__()
         self.optic_config = optic_config
         self.members_to_learn = [] if members_to_learn is None else members_to_learn
+        self.device_dummy = nn.Parameter(torch.tensor([1.0]))
 
 
     def get_trainable_variables(self):
@@ -19,3 +20,6 @@ class OpticBlock(nn.Module):  # pure virtual class
             if name in self.members_to_learn:
                 trainable_vars.append(param)
         return list(trainable_vars)
+    
+    def get_device(self):
+        return self.device_dummy.device
