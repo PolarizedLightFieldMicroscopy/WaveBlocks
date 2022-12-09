@@ -19,6 +19,9 @@ class MLAConfig:
 class CameraConfig:
     pass
 
+class PolConfig:
+    pass
+
 class VolumeConfig:
     pass
 
@@ -86,6 +89,13 @@ class OpticConfig(nn.Module):
         camera_config = CameraConfig()
         camera_config.sensor_pitch = 6.5
         return camera_config
+
+    @staticmethod
+    def get_polarizers():
+        pol_config = PolConfig()
+        pol_config.polarizer = np.array([[1, 0], [0, 1]])
+        pol_config.analyzer = np.array([[1, 0], [0, 1]])
+        return pol_config
     
     def __init__(self, PSF_config=None):
         super(OpticConfig, self).__init__()
@@ -96,6 +106,7 @@ class OpticConfig(nn.Module):
         self.set_k()
         self.mla_config = self.get_default_MLA_config()
         self.camera_config = self.get_default_camera_config()
+        self.pol_config = self.get_polarizers()
         self.volume_config = VolumeConfig()
 
 
