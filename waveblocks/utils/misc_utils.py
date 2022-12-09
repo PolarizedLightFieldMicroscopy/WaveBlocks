@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from PIL import Image
 import torchvision.transforms as TF
 import matplotlib.pyplot as plt
-from scipy.ndimage.filters import gaussian_filter
+from scipy.ndimage import gaussian_filter
 import h5py
 import re
 import numpy as np
