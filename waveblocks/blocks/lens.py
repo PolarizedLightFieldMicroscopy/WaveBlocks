@@ -126,14 +126,14 @@ class Lens(OpticBlock):
         # Based on the function propFF out of the book "Computational Fourier
         # Optics. A MATLAB Tutorial". There you can find more information.
 
-        wavelenght = self.optic_config.get_wavelenght()
+        wavelength = self.optic_config.get_wavelength()
         [M, N] = u1.shape[-3:-1]
 
         # source sample interval
         dx1 = self.sampling_rate
 
         # obs sidelength
-        L2 = wavelenght * self.focal_length / dx1
+        L2 = wavelength * self.focal_length / dx1
 
         # obs sample interval
         # dx2 = wavelength*self.focal_length/L1

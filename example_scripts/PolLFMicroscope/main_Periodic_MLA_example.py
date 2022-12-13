@@ -61,7 +61,7 @@ GT_volume /= GT_volume.max()
 optical_config = OpticConfig()
 
 # Update optical config from input PSF
-psf_size = 255
+psf_size = 255 # 17 pixel per microlenses, 11x11 microlenses, makes 17x11=187
 optical_config.PSF_config.NA = 1.2 
 optical_config.PSF_config.M = 60
 optical_config.PSF_config.Ftl = 200000

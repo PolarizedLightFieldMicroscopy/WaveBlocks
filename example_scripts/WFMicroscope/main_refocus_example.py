@@ -68,7 +68,7 @@ obj_image /= obj_image.max()
 # Create optical_config object with the information from the microscope
 optical_config = OpticConfig()
 # Update optical config from input PSF
-optical_config.PSF_config.wvl = psfFile['wavelenght'][0]
+optical_config.PSF_config.wvl = psfFile['wavelength'][0]
 optical_config.PSF_config.ni = 1
 
 # Load info from PSF file

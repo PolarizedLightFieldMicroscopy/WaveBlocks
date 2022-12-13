@@ -28,7 +28,7 @@ class VolumeConfig:
 class OpticConfig(nn.Module):
     """Class containing the global parameters of an optical system:
     Keyword args:
-    wavelenght: wavelenght of optical system (in um)
+    wavelength: wavelength of optical system (in um)
     samplingRate: sampling used when propagating wavefronts through space. Or when using a camera.
     k: wave number
     """
@@ -110,7 +110,7 @@ class OpticConfig(nn.Module):
         self.volume_config = VolumeConfig()
 
 
-    def get_wavelenght(self):
+    def get_wavelength(self):
         return self.PSF_config.wvl
 
     def get_medium_refractive_index(self):
